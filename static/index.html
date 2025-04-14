@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bliss Demo</title>
+  <link rel="stylesheet" href="mystyle.css">
+  <script>
+    async function StartStandardDemo() {
+      const payload = { demo: "Bliss" };
+  
+      try {
+        const response = await fetch('/enqueue', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        });
+  
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+  
+        const data = await response.json();
+        const { id, port } = data;
+  
+        // Displaying the result in the webpage
+        document.getElementById('result').innerText = `Received id: ${id}, port: ${port}`;
+  
+        // Start periodic keepalive requests
+        function sendKeepalive() {
+          const keepaliveData = JSON.stringify({ id: id });
+  
+          fetch('/keepalive', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: keepaliveData,
+          })
+            .then(response => {
+              if (!response.ok) {
+                throw new Error('Failed to send keepalive');
+              }
+              console.log('Keepalive sent successfully');
+            })
+            .catch(error => {
+              console.error('Error sending keepalive:', error);
+            });
+        }
+  
+        // Send keepalive every 20 seconds
+        setInterval(sendKeepalive, 20000);
+  
+        // Embed the iframe
+        const domain = window.location.hostname;
+        const iframe = document.createElement('iframe');
+        iframe.id = 'serviceFrameSend';
+        iframe.src = `/noVNC/vnc.html?host=${domain}&port=${port}&path=&resize=scale&autoconnect=true`;
+        iframe.width = '800';
+        iframe.height = '800';
+        iframe.frameBorder = '0';
+  
+        // Append iframe to the body (or a specific container)
+        document.body.appendChild(iframe);
+  
+      } catch (error) {
+        console.error('Error:', error);
+        document.getElementById('result').innerText = 'Error sending request.';
+      }
+    }
+
+    async function StartNogpuDemo() {
+      const payload = { demo: "Software" };
+  
+      try {
+        const response = await fetch('/enqueue', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        });
+  
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+  
+        const data = await response.json();
+        const { id, port } = data;
+  
+        // Displaying the result in the webpage
+        document.getElementById('result').innerText = `Received id: ${id}, port: ${port}`;
+  
+        // Start periodic keepalive requests
+        function sendKeepalive() {
+          const keepaliveData = JSON.stringify({ id: id });
+  
+          fetch('/keepalive', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: keepaliveData,
+          })
+            .then(response => {
+              if (!response.ok) {
+                throw new Error('Failed to send keepalive');
+              }
+              console.log('Keepalive sent successfully');
+            })
+            .catch(error => {
+              console.error('Error sending keepalive:', error);
+            });
+        }
+  
+        // Send keepalive every 20 seconds
+        setInterval(sendKeepalive, 20000);
+  
+        // Embed the iframe
+        const domain = window.location.hostname;
+        const iframe = document.createElement('iframe');
+        iframe.id = 'serviceFrameSend';
+        iframe.src = `/noVNC/vnc.html?host=${domain}&port=${port}&path=&resize=scale&autoconnect=true`;
+        iframe.width = '800';
+        iframe.height = '800';
+        iframe.frameBorder = '0';
+  
+        // Append iframe to the body (or a specific container)
+        document.body.appendChild(iframe);
+  
+      } catch (error) {
+        console.error('Error:', error);
+        document.getElementById('result').innerText = 'Error sending request.';
+      }
+    }
+
+    async function StartScrcpyDemo() {
+      const payload = { demo: "Scrcpy" };
+  
+      try {
+        const response = await fetch('/enqueue', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        });
+  
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+  
+        const data = await response.json();
+        const { id, port } = data;
+  
+        // Displaying the result in the webpage
+        document.getElementById('result').innerText = `Received id: ${id}, port: ${port}, scrcpy port is ${port + 10 }`;
+  
+        // Start periodic keepalive requests
+        function sendKeepalive() {
+          const keepaliveData = JSON.stringify({ id: id });
+  
+          fetch('/keepalive', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: keepaliveData,
+          })
+            .then(response => {
+              if (!response.ok) {
+                throw new Error('Failed to send keepalive');
+              }
+              console.log('Keepalive sent successfully');
+            })
+            .catch(error => {
+              console.error('Error sending keepalive:', error);
+            });
+        }
+  
+        // Send keepalive every 20 seconds
+        setInterval(sendKeepalive, 20000);
+  
+        // Embed the iframe
+        const domain = window.location.hostname;
+        const iframe = document.createElement('iframe');
+        iframe.id = 'serviceFrameSend';
+        iframe.src = `/noVNC/vnc.html?host=${domain}&port=${port}&path=&resize=scale&autoconnect=true`;
+        iframe.width = '800';
+        iframe.height = '800';
+        iframe.frameBorder = '0';
+  
+        // Append iframe to the body (or a specific container)
+        document.body.appendChild(iframe);
+  
+      } catch (error) {
+        console.error('Error:', error);
+        document.getElementById('result').innerText = 'Error sending request.';
+      }
+    }
+  </script>
+  
+</head>
+<body>
+    <div class="row-container">
+        <div class="first-row">
+            <h1>Bliss Demo Page</h1>
+            <button onclick="StartStandardDemo()">Standard Demo</button>
+            <button onclick="StartNogpuDemo()">Sofware rendered Demo</button>
+            <button onclick="StartScrcpyDemo()">Scrcpy Demo</button>
+            <p id="result"></p>
+        </div>
+        <!--iframe id="serviceFrameSend" src="/noVNC/vnc.html?&port=15901&path=&resize=scale" 
+            width="800" height="800" frameborder="0"-->
+        </div>
+</body>
+</html>
