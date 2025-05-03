@@ -25,6 +25,7 @@ struct Task {
     user: User,
     last_keepalive: Instant,
     process: Child,
+    name: String,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -46,65 +47,79 @@ struct AppState {
 }
 
 #[rustfmt::skip]
-fn spawn_process_for_user(demo: web::Json<Demo>, port: &u16) -> std::io::Result<Child> {
+fn spawn_process_for_user(demo: web::Json<Demo>, port: &u16) -> (std::io::Result<Child>, String) {
     let vnc_option = format!(":0,websocket={},to=100", port);
 
     // change restrict=no to allow internet
     let adb_option= format!("user,hostfwd=tcp::{}-:5555,restrict=yes", port + 10);
     println!("arg is {}", demo.demo.as_str());
+    if demo.demo.as_str() == "VMWare" {
+        // THIS WILL OPEN A WINDOW ON HOST
+        // Make sure to have a working window system
+        // make sure to run websockify first use http as self signed certs
+        // websockify 26001 0.0.0.0:26000
 
-    // make sure to configure arguments as needed.
-    let args = match demo.demo.as_str() {
-        "Software" => vec![
-            "-accel", "kvm",
-            "-m", "8G",
-            "-smp", "4",
-            "-cpu", "host",
-            "-bios", "/usr/share/OVMF/x64/OVMF.4m.fd",
-            "-device", "qxl",
-            "-display", "none",
-            "-vnc", &vnc_option,
-            "-drive", "if=virtio,file=/nvme/VM/disks/android-test.qcow2",
-            "-snapshot",
-        ],
-        "Scrcpy" => vec![
-            "-accel", "kvm",
-            "-m", "8G",
-            "-smp", "4",
-            "-cpu", "host",
-            "-bios", "/usr/share/OVMF/x64/OVMF.4m.fd",
-            "-device", "virtio-vga-gl,blob=true,hostmem=8G,venus=true",
-            "-object", "memory-backend-memfd,id=mem1,size=8G",
-            "-machine", "memory-backend=mem1",
-            "-display", "egl-headless,gl=on",
-            "-vnc", &vnc_option,
-            "-net", "nic,model=virtio-net-pci",
-            "-net", &adb_option,
-            "-drive", "if=virtio,file=/nvme/VM/disks/android-test.qcow2",
-            "-snapshot",
-        ],
-        _ => vec![
-            "-accel", "kvm",
-            "-m", "4G",
-            "-smp", "2",
-            "-cpu", "host",
-            "-bios", "/usr/share/OVMF/x64/OVMF.4m.fd",
-            "-device", "virtio-vga-gl,blob=true,hostmem=4G,venus=true",
-            "-object", "memory-backend-memfd,id=mem1,size=4G",
-            "-machine", "memory-backend=mem1",
-            "-display", "egl-headless,gl=on",
-            "-vnc", &vnc_option,
-            "-drive", "if=virtio,file=/nvme/VM/disks/android-test.qcow2",
-            "-snapshot",
-        ]
+        let task = Command::new("vmware")
+            .args(vec!["-x", "/nvme/VM/disks/BlissDemo/BlissDemo.vmx"])
+            .stdout(Stdio::inherit())
+            .stderr(Stdio::inherit())
+            .spawn();
 
-    };
+        (task, "vmware".to_owned())
+    } else {
+        // make sure to configure arguments as needed.
+        let args = match demo.demo.as_str() {
+            "Software" => vec![
+                "-accel", "kvm",
+                "-m", "8G",
+                "-smp", "4",
+                "-cpu", "host",
+                "-bios", "/usr/share/OVMF/x64/OVMF.4m.fd",
+                "-device", "qxl",
+                "-display", "none",
+                "-vnc", &vnc_option,
+                "-drive", "if=virtio,file=/nvme/VM/disks/android-test.qcow2",
+                "-snapshot",
+            ],
+            "Scrcpy" => vec![
+                "-accel", "kvm",
+                "-m", "8G",
+                "-smp", "4",
+                "-cpu", "host",
+                "-bios", "/usr/share/OVMF/x64/OVMF.4m.fd",
+                "-device", "virtio-vga-gl,blob=true,hostmem=8G,venus=true",
+                "-object", "memory-backend-memfd,id=mem1,size=8G",
+                "-machine", "memory-backend=mem1",
+                "-display", "egl-headless,gl=on",
+                "-vnc", &vnc_option,
+                "-net", "nic,model=virtio-net-pci",
+                "-net", &adb_option,
+                "-drive", "if=virtio,file=/nvme/VM/disks/android-test.qcow2",
+                "-snapshot",
+            ],
+            _ => vec![
+                "-accel", "kvm",
+                "-m", "4G",
+                "-smp", "2",
+                "-cpu", "host",
+                "-bios", "/usr/share/OVMF/x64/OVMF.4m.fd",
+                "-device", "virtio-vga-gl,blob=true,hostmem=4G,venus=true",
+                "-object", "memory-backend-memfd,id=mem1,size=4G",
+                "-machine", "memory-backend=mem1",
+                "-display", "egl-headless,gl=on",
+                "-vnc", &vnc_option,
+                "-drive", "if=virtio,file=/nvme/VM/disks/android-test.qcow2",
+                "-snapshot",
+            ]
+        };
 
-    Command::new("qemu-system-x86_64")
-        .args(args)
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
-        .spawn()
+        let task = Command::new("qemu-system-x86_64")
+            .args(args)
+            .stdout(Stdio::inherit())
+            .stderr(Stdio::inherit())
+            .spawn();
+        (task, "qemu".to_owned())
+    }
 
 }
 
@@ -135,7 +150,8 @@ async fn enqueue_user(state: web::Data<AppState>, demo: web::Json<Demo>) -> impl
         queue = state.queue.lock().unwrap();
     }
     let rand_port = openport::pick_random_unused_port().unwrap();
-    let process = match spawn_process_for_user(demo, &rand_port) {
+    let (process_opt, task_name) = spawn_process_for_user(demo, &rand_port); 
+    let process = match process_opt {
         Ok(child) => child,
         Err(e) => {
             return HttpResponse::InternalServerError()
@@ -147,6 +163,7 @@ async fn enqueue_user(state: web::Data<AppState>, demo: web::Json<Demo>) -> impl
         user: user,
         last_keepalive: Instant::now(),
         process,
+        name: task_name,
     };
     let reply = Json(serde_json::json!({
         "id": id,
@@ -211,9 +228,17 @@ async fn cleaner_task(state: web::Data<AppState>, timeout: Duration) {
                     "Task for user id {} timed out; terminating process.",
                     task.user.id
                 );
-                let id = task.process.id();
-                println!("{}", id);
                 let _ = task.process.kill().expect("command couldn't be killed");
+                if task.name == "vmware" {
+                    #[cfg(windows)]
+                    {
+                        std::process::Command::new("taskkill").args(&["/IM", "vmware", "/F"]).output().ok();
+                    }
+                    #[cfg(unix)]
+                    {
+                        std::process::Command::new("pkill").args(vec!["-f", "vmware"]).output().ok();
+                    }
+                }
                 false
             } else {
                 true

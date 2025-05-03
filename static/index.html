@@ -206,6 +206,72 @@
         
       }
     }
+
+    async function StartVMWareDemo() {
+      const payload = { demo: "VMWare" };
+      try {
+        const response = await fetch('/enqueue', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        });
+  
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+  
+        const data = await response.json();
+        const { id, port } = data;
+        document.getElementById('result').innerText = `Received id: ${id}, port: ${port}`;
+  
+        function sendKeepalive() {
+          const keepaliveData = JSON.stringify({ id: id });
+  
+          fetch('/keepalive', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: keepaliveData,
+          })
+            .then(response => {
+              if (!response.ok) {
+                throw new Error('Failed to send keepalive');
+              }
+              console.log('Keepalive sent successfully');
+            })
+            .catch(error => {
+              console.error('Error sending keepalive:', error);
+            });
+        }
+        setInterval(sendKeepalive, 20000);
+        
+        const resultParagraph = document.createElement('paragraph');
+        resultParagraph.innerText = `Assigned id: ${id}, if time out, please wait 5 seconds and retry`;
+
+        const domain = window.location.hostname;
+        const iframe = document.createElement('iframe');
+        iframe.id = 'serviceFrameSend';
+        iframe.src = `/noVNC/vnc.html?host=${domain}&port=26001&path=&resize=scale&autoconnect=true`;
+        iframe.width = '800';
+        iframe.height = '800';
+        iframe.frameBorder = '0';
+
+        const stack = document.createElement('container');
+        stack.id = 'stackContainer';
+        stack.appendChild(resultParagraph);
+        stack.appendChild(iframe);
+
+        var container = document.getElementById('iframeContainer');
+        container.appendChild(stack);
+  
+      } catch (error) {
+        console.error('Error:', error);
+        document.getElementById('result').innerText = 'Error sending request.';
+      }
+    }
   </script>
   
 </head>
@@ -216,6 +282,7 @@
             <button onclick="StartStandardDemo()">Standard Demo</button>
             <button onclick="StartNogpuDemo()">Sofware Demo</button>
             <button onclick="StartScrcpyDemo()">Scrcpy Demo</button>
+            <button onclick="StartVMWareDemo()">VMWare Demo</button>
             <p id="result"></p>
         </div>
         <div class="second-row">
